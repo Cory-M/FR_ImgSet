@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import torchvision
+import math
 
 ##  新增的一个import
 from input_pipeline import DatasetFolder
@@ -24,9 +25,10 @@ warnings.filterwarnings("ignore")
 
 #参数设定
 Load_Pre_Trained = True
-Training_dir = '/media/zhineng/Data/M/aligned_imgs/'
-_batch_size = 10
+Training_dir = '/media/zhineng/Data/M/aligned_imgs_test/'
+_batch_size = 20
 _seq_num = 32
+_classnum=194
 
 
 
@@ -37,7 +39,7 @@ print(device)
 
 
 
-net = getattr(cnn_cnn,'cnn_cnn_')(batch_size=_batch_size,seq_num=_seq_num,classnum=1400,feature=False)
+net = getattr(cnn_cnn,'cnn_cnn_')(batch_size=_batch_size,seq_num=_seq_num,classnum=_classnum,feature=False)
 net_dict = net.state_dict()
 
 if Load_Pre_Trained:
@@ -66,72 +68,60 @@ for k in net.children():
 # transform dictionary
 # ToTensor 是必选项, 否则格式不支持
 transform = transforms.Compose(
-    [transforms.Resize((112,96), interpolation=2),
-    transforms.ToTensor(),
-    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
+	[transforms.ToTensor(),
+	transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
 
 
 
 trainset = DatasetFolder(Training_dir,transform=transform,extensions='.jpg',seq_num=_seq_num)
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=_batch_size,
-                                          shuffle=True, num_workers=1)
+										  shuffle=True, num_workers=1)
 
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(para_optim,lr=0.0001,momentum=0.9)
+optimizer = optim.SGD(para_optim,lr=0.00001,momentum=0.9)
 
 
-for epoch in range(300):  # loop over the dataset multiple times
+for epoch in range(1000):  # loop over the dataset multiple times
 
-    running_loss = 0.0
-    for i, data in enumerate(trainloader, 0):
-        # get the inputs
-        inputs, labels = data
+	running_loss = 0.0
+	for i, data in enumerate(trainloader, 0):
 
-        inputs, labels = inputs.to(device), labels.to(device)
+		if i>(math.floor(435/_batch_size)-1): continue
+		
+		# get the inputs
+		inputs, labels = data
+		
 
-        # zero the parameter gradients
-        optimizer.zero_grad()
+		inputs, labels = inputs.to(device), labels.to(device)
 
-        # forward + backward + optimize
-        outputs = net(inputs)
-        loss = criterion(outputs, labels)
-        loss.backward()
-        optimizer.step()
+		# zero the parameter gradients
+		optimizer.zero_grad()
 
-        # print statistics
-        running_loss += loss.item()
-        if i % 5 == 4:    # print every 20 mini-batches
-            print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss / 20))
-            running_loss = 0.0
+		# forward + backward + optimize
+		outputs = net(inputs)
+		_, predicted = torch.max(outputs, 1)
+		
+		# print(outputs)
+
+		# nn.LogSoftMax
+		loss = criterion(outputs, labels)
+		loss.backward()
+		optimizer.step()
+
+		# print statistics
+		running_loss += loss.item()
+		if i % 5 == 4:    # print every 20 mini-batches
+			print('[%d, %5d] loss: %.3f' %
+				  (epoch + 1, i + 1, running_loss / 5))
+			print('predicts')
+			print(predicted)
+			print('labels')
+			print(labels)
+			running_loss = 0.0
 
 print('Finished Training')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
