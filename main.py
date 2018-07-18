@@ -26,12 +26,21 @@ warnings.filterwarnings("ignore")
 
 #参数设定
 Load_Pre_Trained = True
-Training_dir = '/media/zhineng/Data/M/aligned_imgs_test/'
+Training_dir = '/media/zhineng/Data/M/aligned_imgs/'
 _batch_size = 20
 _seq_num = 32
-_classnum=194
+_classnum=1400
+Save_Model = '/media/zhineng/Data/M/Models/cnn_cnn_'
+Print_Labels = False
 
 
+#get file number
+filenum = 0
+for speaker in os.listdir(Training_dir):
+	for video in os.listdir(Training_dir+'/'+speaker):
+		filenum+=1
+epoch_filenum = math.floor(filenum/_batch_size)*_batch_size
+print('File Number is %d, Epoch File Number is %d'%(filenum,epoch_filenum))
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -84,17 +93,17 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(para_optim,lr=0.00001,momentum=0.9)
 
 writer = SummaryWriter('cnn_cnn')
-for epoch in range(1000):  # loop over the dataset multiple times
+for epoch in range(5000):  # loop over the dataset multiple times
 
 	running_loss = 0.0
+	correct = 0
+	total = 0
 	for i, data in enumerate(trainloader, 0):
 
-		if i>(math.floor(435/_batch_size)-1): continue
+		if i>(math.floor(filenum/_batch_size)-1): continue
 		
 		# get the inputs
 		inputs, labels = data
-		
-
 		inputs, labels = inputs.to(device), labels.to(device)
 
 		# zero the parameter gradients
@@ -113,16 +122,26 @@ for epoch in range(1000):  # loop over the dataset multiple times
 
 		# print statistics & draw on tensorboard
 		running_loss += loss.item()
+		total += labels.size(0)
+		correct += (predicted==labels).sum().item()
 		if i % 5 == 4:    # print every 5 mini-batches
 			print('[%d, %5d] loss: %.3f' %
 				  (epoch + 1, i + 1, running_loss / 5))
-			print('predicts')
-			print(predicted)
-			print('labels')
-			print(labels)
-			writer.add_scalar('train/loss',running_loss / 5, epoch*420+5*(i+1))
-			# writer.add_scaler('train/accuracy',accuracy,epoch + 5*(i+1))
+			if Print_Labels:
+				print('predicts')
+				print(predicted)
+				print('labels')
+				print(labels)
+			accuracy = correct/total
+			print('Accuray: %d %%'%(100*accuracy))
+			writer.add_scalar('train/loss',running_loss / 5, epoch*epoch_filenum + 5*(i+1))
+			writer.add_scalar('train/accuracy',accuracy,epoch*epoch_filenum + 5*(i+1))
 			running_loss = 0.0
+			correct = 0
+			total = 0
+
+	if epoch%200 == 199:
+		torch.save(net.state_dict(),Save_Model+ str(epoch+1) +'.pth')
 
 writer.close()
 print('Finished Training')
