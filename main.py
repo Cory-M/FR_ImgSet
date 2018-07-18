@@ -134,8 +134,8 @@ for epoch in range(5000):  # loop over the dataset multiple times
 				print(labels)
 			accuracy = correct/total
 			print('Accuray: %d %%'%(100*accuracy))
-			writer.add_scalar('train/loss',running_loss / 5, epoch*epoch_filenum + 5*(i+1))
-			writer.add_scalar('train/accuracy',accuracy,epoch*epoch_filenum + 5*(i+1))
+			writer.add_scalar('train/loss',running_loss / 5, epoch*epoch_filenum + 5*(i+1)*_batch_size)
+			writer.add_scalar('train/accuracy',accuracy,epoch*epoch_filenum + 5*(i+1)*_batch_size)
 			running_loss = 0.0
 			correct = 0
 			total = 0
