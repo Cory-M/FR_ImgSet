@@ -14,6 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 import torchvision
 import math
+from tensorboardX import SummaryWriter
 
 ##  新增的一个import
 from input_pipeline import DatasetFolder
@@ -82,7 +83,7 @@ trainloader = torch.utils.data.DataLoader(trainset, batch_size=_batch_size,
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(para_optim,lr=0.00001,momentum=0.9)
 
-
+writer = SummaryWriter('cnn_cnn')
 for epoch in range(1000):  # loop over the dataset multiple times
 
 	running_loss = 0.0
@@ -105,22 +106,25 @@ for epoch in range(1000):  # loop over the dataset multiple times
 		
 		# print(outputs)
 
-		# nn.LogSoftMax
+		
 		loss = criterion(outputs, labels)
 		loss.backward()
 		optimizer.step()
 
-		# print statistics
+		# print statistics & draw on tensorboard
 		running_loss += loss.item()
-		if i % 5 == 4:    # print every 20 mini-batches
+		if i % 5 == 4:    # print every 5 mini-batches
 			print('[%d, %5d] loss: %.3f' %
 				  (epoch + 1, i + 1, running_loss / 5))
 			print('predicts')
 			print(predicted)
 			print('labels')
 			print(labels)
+			writer.add_scalar('train/loss',running_loss / 5, epoch*420+5*(i+1))
+			# writer.add_scaler('train/accuracy',accuracy,epoch + 5*(i+1))
 			running_loss = 0.0
 
+writer.close()
 print('Finished Training')
 
 
