@@ -127,20 +127,22 @@ for epoch in range(5000):  # loop over the dataset multiple times
 		if i % 5 == 4:    # print every 5 mini-batches
 			print('[%d, %5d] loss: %.3f' %
 				  (epoch + 1, i + 1, running_loss / 5))
+
+			accuracy = correct/total
+			print('Accuray: %d %%'%(100*accuracy))
+			writer.add_scalar('train/loss',running_loss / 5, epoch*149 + (i+1))
+			writer.add_scalar('train/accuracy',accuracy,epoch*149 +(i+1))
+			running_loss = 0.0
+			correct = 0
+			total = 0
 			if Print_Labels:
 				print('predicts')
 				print(predicted)
 				print('labels')
 				print(labels)
-			accuracy = correct/total
-			print('Accuray: %d %%'%(100*accuracy))
-			writer.add_scalar('train/loss',running_loss / 5, epoch*epoch_filenum + 5*(i+1)*_batch_size)
-			writer.add_scalar('train/accuracy',accuracy,epoch*epoch_filenum + 5*(i+1)*_batch_size)
-			running_loss = 0.0
-			correct = 0
-			total = 0
 
 	if epoch%200 == 199:
+		os.system('touch '+Save_Model+ str(epoch+1) +'.pth')
 		torch.save(net.state_dict(),Save_Model+ str(epoch+1) +'.pth')
 
 writer.close()
