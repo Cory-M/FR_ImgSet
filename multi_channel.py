@@ -7,18 +7,18 @@ import math
 from custom_classes import Conv2d_SAME, MaxPool2d_SAME
 
 class mc_(nn.Module):
-	def __init__(self,batch_size=10,width=96,height=112,frame_num=5,classnum=1400,feature=True):
+	def __init__(self,batch_size=10,width=96,height=112,seq_num=5,classnum=1400,feature=True):
 		super(mc_,self).__init__()
 		self.batch_size = batch_size
 		self.feature = feature
-		self.frame_num = frame_num
+		self.seq_num = seq_num
 		self.classnum = classnum
 		self.width = width
 		self.height = height
 
-		#input = B*(3*framenum)*112*96
+		#input = B*(3*seq_num)*112*96
 
-		self.sg_conv_1 = Conv2d_SAME(self.frame_num*3,192,5,2)
+		self.sg_conv_1 = Conv2d_SAME(self.seq_num*3,192,5,2)
 		self.sg_bn_1 = nn.BatchNorm2d(192,eps=1e-3,momentum=0.9)
 		self.sg_relu_1 = nn.ReLU(True)
 		self.sg_pool_1  = MaxPool2d_SAME(3,2)
@@ -78,7 +78,7 @@ class mc_(nn.Module):
 
 	def forward(self, x):
 		#input: [b*img_num*3*112*96]
-		x = x.view(self.batch_size,self.frame_num*3,112,96) #batch_size * 1 channel * Img_Num * 512
+		x = x.view(self.batch_size,self.seq_num*3,112,96) #batch_size * 1 channel * Img_Num * 512
 
 		x = self.sg_pool_1(self.sg_relu_1(self.sg_bn_1(self.sg_conv_1(x))))
 		x = self.sg_relu_2(self.sg_bn_2(self.sg_conv_2(x)))
