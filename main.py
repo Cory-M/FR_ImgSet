@@ -45,6 +45,7 @@ if Model == 'cnn_cnn':
 
 if Model == 'multi_channel':
 	Print_Labels = False
+	Load_Para = True
 
 	Training_dir ='/media/nirheaven/nirheaven_ext4/M/aligned_imgs/'
 	Save_Model = '/media/nirheaven/nirheaven_ext4/M/code/code/MC_Models/mc_'
@@ -88,6 +89,9 @@ if Model == 'cnn_cnn':
 if Model == 'multi_channel':
 	net = getattr(multi_channel,'mc_')(batch_size=_batch_size,seq_num=_seq_num,classnum=_classnum,feature=False)
 
+	if Load_Para:
+		net.load_state_dict(torch.load(Save_Model+'5000.pth'))
+		print('successfully load 5000_epoch parameters')
 net.to(device)
 
 
