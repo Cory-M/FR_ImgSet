@@ -22,7 +22,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 Model = 'multi_channel'  #choose from {'cnn_cnn','multi_channel'}
-load_epoch_num =10200
+load_epoch_num =13800
+
 
 #参数设定
 if Model == 'cnn_cnn':
@@ -76,11 +77,6 @@ elif Model == 'multi_channel':
 else:
 	print('load model ERROR: Model does not exist')
 
-net.load_state_dict(torch.load(Load_Model+str(load_epoch_num)+'.pth'))
-print('successfully load epoch_%d parameters'%(load_epoch_num))
-
-net.to(device)
-
 transform = transforms.Compose(
 	[transforms.ToTensor(),
 	transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
@@ -90,22 +86,67 @@ testset = DatasetFolder(Test_dir,transform=transform,extensions='.jpg',seq_num=_
 testloader = torch.utils.data.DataLoader(testset, batch_size=_batch_size,
 										  shuffle=False, num_workers=1)
 
+Max_Diff = 0
+for load_epoch_num in range(7000,14001):
+	if load_epoch_num%600 == 0:
 
-for epoch in range(10):
-	with open(save_txt+str(load_epoch_num)+'_'+str(epoch)+'.txt','w+') as f:
+		net.load_state_dict(torch.load(Load_Model+str(load_epoch_num)+'.pth'))
+		print('successfully load epoch_%d parameters'%(load_epoch_num))
 
-		for i,data in enumerate(testloader,0):
-			if i>(math.floor(filenum/_batch_size)-1): continue
+		net.to(device)
 
-			inputs, labels = data
-			inputs = inputs.to(device)
+		for epoch in range(2):
+			feature_list = []
+			# with open(save_txt+str(load_epoch_num)+'_'+str(epoch)+'.txt','w+') as f:
 
-			with torch.no_grad():
-				outputs = net(inputs)
-				outputs = outputs.to('cpu')
+			for i,data in enumerate(testloader,0):
+				if i>(math.floor(filenum/_batch_size)-1): continue
 
-				for i in range(_batch_size):
-					f.write(str(labels.numpy()[i])+' '+str(outputs.numpy()[i])+'\n')
+				inputs, labels = data
+				inputs = inputs.to(device)
+
+				with torch.no_grad():
+					outputs = net(inputs)
+					outputs = outputs.to('cpu')
+
+					for i in range(_batch_size):
+
+						feature_list.append((labels.numpy()[i],outputs.numpy()[i]))
+
+			# with open(save_txt+str(load_epoch_num)+'_'+str(epoch)+'_dist.txt','w+') as f:
+			same_count=0
+			same_class_dist=0
+			count = 0
+			distance = 0
+
+			for i,item in enumerate(feature_list):
+				label_i,feature_i = item
+				for j in range(i+1,len(feature_list)):
+					label_j,feature_j = feature_list[j]
+					# 归一化
+					# feature_i = feature_i/np.linalg.norm(feature_i)
+					# feature_j = feature_j/np.linalg.norm(feature_j)
+					# dist = np.linalg.norm(feature_i - feature_j)  #欧式距离
+					dist = np.dot(feature_i,feature_j) #内积
+					count+=1
+					distance+=dist
+					if label_i == label_j:
+						same_class_dist += dist
+						same_count+=1
+					# distance_ij = distance(feature_i,feature_j)
+					# print(str(label_i) + '-' + str(label_j) + '  ' +str(dist))
+					# f.write(str(label_i) + '-' + str(label_j) + '  ' +str(dist)+'\n')
+			print(epoch,'average same_class_dist =',(same_class_dist/same_count))
+			print(epoch,'average distance = ',(distance/count))
+			diff = (same_class_dist/same_count) - (distance/count)
+			if diff<Max_Diff:
+				Max_Diff = diff
+print(Max_Diff)
+			# print('diff=',(same_class_dist/same_count)-(distance/count))
+
+
+
+
 
 
 
