@@ -17,6 +17,8 @@ from tensorboardX import SummaryWriter
 
 from input_pipeline import DatasetFolder
 
+import matplotlib.pyplot as plt
+
 # Ignore warnings
 import warnings
 warnings.filterwarnings("ignore")
@@ -87,8 +89,10 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=_batch_size,
 										  shuffle=False, num_workers=1)
 
 Max_Diff = 0
+a = []
+b = []
 for load_epoch_num in range(7000,14001):
-	if load_epoch_num%600 == 0:
+	if load_epoch_num%200 == 0:
 
 		net.load_state_dict(torch.load(Load_Model+str(load_epoch_num)+'.pth'))
 		print('successfully load epoch_%d parameters'%(load_epoch_num))
@@ -136,6 +140,10 @@ for load_epoch_num in range(7000,14001):
 					# distance_ij = distance(feature_i,feature_j)
 					# print(str(label_i) + '-' + str(label_j) + '  ' +str(dist))
 					# f.write(str(label_i) + '-' + str(label_j) + '  ' +str(dist)+'\n')
+			if epoch == 0:
+				a.append((same_class_dist/same_count)-(distance/count))
+			if epoch == 1:
+				b.append((same_class_dist/same_count)-(distance/count))
 			print(epoch,'average same_class_dist =',(same_class_dist/same_count))
 			print(epoch,'average distance = ',(distance/count))
 			diff = (same_class_dist/same_count) - (distance/count)
@@ -144,9 +152,11 @@ for load_epoch_num in range(7000,14001):
 print(Max_Diff)
 			# print('diff=',(same_class_dist/same_count)-(distance/count))
 
-
-
-
+x=range(7000,14001,200)
+plt.plot(x,a)
+plt.plot(x,b)
+plt.legend()
+plt.show()
 
 
 
