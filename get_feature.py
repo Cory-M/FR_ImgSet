@@ -24,7 +24,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 Model = 'multi_channel'  #choose from {'cnn_cnn','multi_channel'}
-load_epoch_num =13800
+# load_epoch_num =13800
 
 
 #参数设定
@@ -49,7 +49,7 @@ if Model == 'multi_channel':
 	save_txt = '/media/nirheaven/nirheaven_ext4/M/code/code/feature/mc_epoch'
 
 	#net parameters
-	_batch_size = 15
+	_batch_size = 29 #53
 	_seq_num = 5
 	_classnum=1400
 	learning_rate = 0.00001
@@ -88,23 +88,21 @@ testset = DatasetFolder(Test_dir,transform=transform,extensions='.jpg',seq_num=_
 testloader = torch.utils.data.DataLoader(testset, batch_size=_batch_size,
 										  shuffle=False, num_workers=1)
 
-Max_Diff = 0
-a = []
-b = []
-for load_epoch_num in range(7000,14001):
-	if load_epoch_num%200 == 0:
+for load_epoch_num in range(8000,10001):
+	if load_epoch_num%800 == 0:
 
 		net.load_state_dict(torch.load(Load_Model+str(load_epoch_num)+'.pth'))
 		print('successfully load epoch_%d parameters'%(load_epoch_num))
 
 		net.to(device)
 
-		for epoch in range(2):
-			feature_list = []
+		#get average pooling features
+		feature_list = []	
+		for epoch in range(3): 			
 			# with open(save_txt+str(load_epoch_num)+'_'+str(epoch)+'.txt','w+') as f:
-
-			for i,data in enumerate(testloader,0):
-				if i>(math.floor(filenum/_batch_size)-1): continue
+			id_num = 0
+			for index,data in enumerate(testloader,0):
+				if index>(math.floor(filenum/_batch_size)-1): continue
 
 				inputs, labels = data
 				inputs = inputs.to(device)
@@ -114,50 +112,55 @@ for load_epoch_num in range(7000,14001):
 					outputs = outputs.to('cpu')
 
 					for i in range(_batch_size):
+						if epoch == 0:
+							feature_list.append([labels.numpy()[i],outputs.numpy()[i]])
+						else:
+							feature_list[id_num][1] = feature_list[id_num][1] + outputs.numpy()[i]
+							id_num += 1
+		feature_list = [(x,y/3) for (x,y) in feature_list]
 
-						feature_list.append((labels.numpy()[i],outputs.numpy()[i]))
 
-			# with open(save_txt+str(load_epoch_num)+'_'+str(epoch)+'_dist.txt','w+') as f:
-			same_count=0
-			same_class_dist=0
-			count = 0
-			distance = 0
+		# compute distance
+		dist_info=[]
+		label_info =[]
+		for i,item in enumerate(feature_list):
+			label_i,feature_i = item
+			for j in range(i+1,len(feature_list)):
+				label_j,feature_j = feature_list[j]
+				# 归一化
+				# feature_i = feature_i/np.linalg.norm(feature_i)
+				# feature_j = feature_j/np.linalg.norm(feature_j)
+				# dist = np.linalg.norm(feature_i - feature_j)  #欧式距离
+				dist = np.dot(feature_i,feature_j) #内积
+				label_info.append((label_i,label_j))
+				dist_info.append(dist)
 
-			for i,item in enumerate(feature_list):
-				label_i,feature_i = item
-				for j in range(i+1,len(feature_list)):
-					label_j,feature_j = feature_list[j]
-					# 归一化
-					# feature_i = feature_i/np.linalg.norm(feature_i)
-					# feature_j = feature_j/np.linalg.norm(feature_j)
-					# dist = np.linalg.norm(feature_i - feature_j)  #欧式距离
-					dist = np.dot(feature_i,feature_j) #内积
-					count+=1
-					distance+=dist
-					if label_i == label_j:
-						same_class_dist += dist
-						same_count+=1
-					# distance_ij = distance(feature_i,feature_j)
-					# print(str(label_i) + '-' + str(label_j) + '  ' +str(dist))
-					# f.write(str(label_i) + '-' + str(label_j) + '  ' +str(dist)+'\n')
-			if epoch == 0:
-				a.append((same_class_dist/same_count)-(distance/count))
-			if epoch == 1:
-				b.append((same_class_dist/same_count)-(distance/count))
-			print(epoch,'average same_class_dist =',(same_class_dist/same_count))
-			print(epoch,'average distance = ',(distance/count))
-			diff = (same_class_dist/same_count) - (distance/count)
-			if diff<Max_Diff:
-				Max_Diff = diff
-print(Max_Diff)
-			# print('diff=',(same_class_dist/same_count)-(distance/count))
 
-x=range(7000,14001,200)
-plt.plot(x,a)
-plt.plot(x,b)
+		#遍历阈值，画ROC图
+		TAR = []
+		FAR = []
+		for threshold in list(np.linspace(min(dist_info),max(dist_info),50)):
+			tp = tn = fp = fn = 0
+			for i in range(len(dist_info)):
+				if dist_info[i] > threshold and label_info[i][0]==label_info[i][1]:
+					tp += 1
+				elif dist_info[i] > threshold and not label_info[i][0]==label_info[i][1]:
+					fp += 1
+				elif  dist_info[i] < threshold and label_info[i][0]==label_info[i][1]:
+					fn += 1
+				else:
+					tn += 1
+			FAR.append(fp/(fp+tn))
+			TAR.append(tp/(tp+fn))
+
+		plt.semilogx(FAR,TAR,label=str(load_epoch_num))
+
+
+plt.xlabel('false positive rate')
+plt.ylabel('true positive rate')
+# plt.plot(TAR,FAR)
 plt.legend()
 plt.show()
-
 
 
 
